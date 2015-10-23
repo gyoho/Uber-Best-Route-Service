@@ -5,11 +5,11 @@ import (
     "fmt"
     "net/http"
     "encoding/json"
-    "math/rand"
     "errors"
     "log"
-    "strconv"
     "io"
+    "gopkg.in/mgo.v2"
+    "gopkg.in/mgo.v2/bson"
 
     // Third party packages
     "github.com/julienschmidt/httprouter"
@@ -20,24 +20,23 @@ import (
 // UserController represents the controller for operating on the User resource
 // i.e) controller has no property, only methods
 type UserController struct{
+    // use reference to access mongodb
+    session *mgo.Session
 }
 
 // returns the reference so to use its methods
-func NewUserController() *UserController {
-    return &UserController{}
+func NewUserController(s *mgo.Session) *UserController {
+    // instantiate with the session received as an arg
+    return &UserController{s}
 }
-
-
-// userID -> userObj
-var UserMap map[int]models.User = make(map[int]models.User)
 
 func (uc UserController) CreateUser(rw http.ResponseWriter, req *http.Request, _ httprouter.Params) {
     // Stub an user to be populated from the body
     usr := models.User{}
     // Populate the user data
     json.NewDecoder(req.Body).Decode(&usr)
-    // assign unique ID
-    usr.Id = rand.Int()
+    // assign unique string ID
+    usr.Id = bson.NewObjectId()
 
     // Append coordinate to the user object
     err := getCoordinates(&usr)
@@ -45,9 +44,12 @@ func (uc UserController) CreateUser(rw http.ResponseWriter, req *http.Request, _
 		log.Println(err)
 	}
 
-
-    // TODO: Persist the data
-    UserMap[usr.Id] = usr
+    // TODO: Persist the data to mongodb
+    conn := uc.session.DB("cmpe273_asgmt2").C("user")
+    err = conn.Insert(usr)
+    if err != nil {
+        log.Println(err)
+    }
 
 
     // Create response
@@ -66,7 +68,7 @@ func (uc UserController) CreateUser(rw http.ResponseWriter, req *http.Request, _
 }
 
 func (uc UserController) GetUser(rw http.ResponseWriter, _ *http.Request, param httprouter.Params) {
-    usr, err := retriveUserById(param.ByName("id"))
+    usr, err := retriveUserById(uc, param.ByName("id"))
     if err != nil {
 		log.Println(err)
 	}
@@ -81,19 +83,16 @@ func (uc UserController) GetUser(rw http.ResponseWriter, _ *http.Request, param 
         fmt.Fprintf(rw, "%s\n", err)
     } else {
         rw.Header().Set("Content-Type", "application/json")
-        rw.WriteHeader(201)
+        rw.WriteHeader(200)
         fmt.Fprintf(rw, "%s\n", usrJson)
     }
 }
 
 func (uc UserController) UpdateUser(rw http.ResponseWriter, req *http.Request, param httprouter.Params) {
-    updatedUsr, err := updateUserLocation(param.ByName("id"), req.Body)
+    updatedUsr, err := updateUserLocation(uc, param.ByName("id"), req.Body)
     if err != nil {
 		log.Println(err)
 	}
-
-    // update the hashmap
-    UserMap[updatedUsr.Id] = updatedUsr
 
     // Create response
     // Marshal provided interface into JSON structure
@@ -111,13 +110,20 @@ func (uc UserController) UpdateUser(rw http.ResponseWriter, req *http.Request, p
 }
 
 func (uc UserController) RemoveUser(rw http.ResponseWriter, _ *http.Request, param httprouter.Params) {
-    usr, err := retriveUserById(param.ByName("id"))
+    // check if the user exists in db
+    usr, err := retriveUserById(uc, param.ByName("id"))
     if err != nil {
 		log.Println(err)
+        log.Println(usr)
 	}
 
-    // remove the user from the hashmap
-    delete(UserMap, usr.Id)
+    // remove the user from the list
+    objId := bson.ObjectIdHex(param.ByName("id"))
+    conn := uc.session.DB("cmpe273_asgmt2").C("user")
+    err = conn.Remove(bson.M{"id": objId})
+    if err != nil {
+        log.Println(err)
+    }
 
     rw.Header().Set("Content-Type", "plain/text")
 
@@ -126,44 +132,56 @@ func (uc UserController) RemoveUser(rw http.ResponseWriter, _ *http.Request, par
         fmt.Fprintf(rw, "%s\n", err)
     } else {
         rw.WriteHeader(200)
-        fmt.Fprintf(rw, "User with ID = , %s, Deleted", param.ByName("id"))
+        fmt.Fprintf(rw, "User with ID=%s Deleted", param.ByName("id"))
     }
 }
 
-func retriveUserById(idStr string) (models.User, error) {
-    // find the user using hashmap
-    id, err := strconv.Atoi(idStr)
-    if err != nil {
-        return models.User{}, errors.New("ID must be an ineger")
+func retriveUserById(uc UserController, id string) (models.User, error) {
+    // Verify id is ObjectId, otherwise bail
+    if !bson.IsObjectIdHex(id) {
+        return models.User{}, errors.New("Not valid user ID")
     }
 
-    // TODO: access DB
-
-    // check if the ID exists in the hashmap
-    usr, ok := UserMap[id]
-    if !ok {
+    // Grab id
+    objId := bson.ObjectIdHex(id)
+    // Stub user
+    usr := models.User{}
+    // make connection
+    conn := uc.session.DB("cmpe273_asgmt2").C("user")
+    err := conn.Find(bson.M{"id": objId}).One(&usr)
+    if err != nil {
         return models.User{}, errors.New("No user found with this ID")
     }
 
     return usr, nil
 }
 
-func updateUserLocation(idStr string, contents io.Reader) (models.User, error) {
-    usr, err := retriveUserById(idStr)
+func updateUserLocation(uc UserController, id string, contents io.Reader) (models.User, error) {
+    // check if the user exists in db
+    usr, err := retriveUserById(uc, id)
     if err != nil {
         return models.User{}, err
     }
 
+    // get the updated contents
     updatedUsr := models.User{}
-    json.NewDecoder(contents).Decode(&updatedUsr)
-    // preseve ID and Name
     updatedUsr.Id = usr.Id
     updatedUsr.Name = usr.Name
-
+    json.NewDecoder(contents).Decode(&updatedUsr)
     // Append coordinate to the user object
     err = getCoordinates(&updatedUsr)
     if err != nil {
         return models.User{}, err
+    }
+
+    // Grab id
+    objId := bson.ObjectIdHex(id)
+    // make connection
+    conn := uc.session.DB("cmpe273_asgmt2").C("user")
+    err = conn.Update(bson.M{"id": objId}, updatedUsr)
+    if err != nil {
+        log.Println(err)
+        return models.User{}, errors.New("No user found with this ID")
     }
 
     return updatedUsr, nil
