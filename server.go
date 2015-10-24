@@ -9,6 +9,14 @@ import (
     "./controllers"
 )
 
+const (
+     dbUser string = "admin"
+     dbPassword string = "admin"
+     dbServer string = "ds043694.mongolab.com"
+     dbPort string = "43694"
+     dbName string = "cmpe273_asgmt2"
+)
+
 func main() {
     // Instantiate a new router
     router := httprouter.New()
@@ -28,8 +36,13 @@ func main() {
 }
 
 func getMongoSession() *mgo.Session {
-    // Connect to our local mongo
-    session, err := mgo.Dial("mongodb://localhost")
+    // Test
+    // session, err := mgo.Dial("mongodb://localhost")
+    
+    // Production
+    url := "mongodb://" + dbUser + ":" + dbPassword + "@" + dbServer + ":" + dbPort + "/" + dbName
+    session, err := mgo.Dial(url)
+
     // Check if connection error, is mongo running?
     if err != nil {
         panic(err)
