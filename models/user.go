@@ -17,7 +17,7 @@ type (
     }
 
     Coord struct {
-        Lan float64 `json:"lan" bson:"lan"`
+        Lat float64 `json:"lat" bson:"lat"`
         Lng float64 `json:"lng" bson:"lng"`
     }
 )

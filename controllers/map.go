@@ -36,10 +36,10 @@ func getCoordinates(usr *models.User) error {
 
     results := contents["results"].([]interface{})
     location := results[0].(map[string]interface{})["geometry"].(map[string]interface{})["location"]
-    // usr.Coordinate.Lan, err = strconv.ParseFloat(location.(map[string]interface{})["lat"].(string), 64)
+    // usr.Coordinate.Lat, err = strconv.ParseFloat(location.(map[string]interface{})["lat"].(string), 64)
     // usr.Coordinate.Lng, err = strconv.ParseFloat(location.(map[string]interface{})["lng"].(string), 64)
 
-    usr.Coordinate.Lan = location.(map[string]interface{})["lat"].(float64)
+    usr.Coordinate.Lat = location.(map[string]interface{})["lat"].(float64)
     usr.Coordinate.Lng = location.(map[string]interface{})["lng"].(float64)
 
     if err != nil {

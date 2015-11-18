@@ -21,14 +21,25 @@ func main() {
     // Instantiate a new router
     router := httprouter.New()
 
-    // Get a UserController instance
-    userController := controllers.NewUserController(getMongoSession())
+    // obtain mongo session
+    mongoSession := getMongoSession()
 
-    // Get a user resource
+    // Get a UserController instance
+    userController := controllers.NewUserController(mongoSession)
+
+    // User resource
     router.GET("/locations/:id", userController.GetUser)
     router.POST("/locations", userController.CreateUser)
     router.PUT("/locations/:id", userController.UpdateUser)
     router.DELETE("/locations/:id", userController.RemoveUser)
+
+    // Get a UserController instance
+    tripController := controllers.NewTripController(mongoSession)
+
+    // Trip resource
+    // router.GET("/trips/:id", tripController.GetTripDetails)
+    router.POST("/trips", tripController.CreateTrip)
+    // router.PUT("/trips/:id/request", tripController.UpdateTripStatus)
 
     // Fire up the server
     fmt.Println("Server listening on 8080")
@@ -37,11 +48,11 @@ func main() {
 
 func getMongoSession() *mgo.Session {
     // Test
-    // session, err := mgo.Dial("mongodb://localhost")
-    
+    session, err := mgo.Dial("mongodb://localhost")
+
     // Production
-    url := "mongodb://" + dbUser + ":" + dbPassword + "@" + dbServer + ":" + dbPort + "/" + dbName
-    session, err := mgo.Dial(url)
+    // url := "mongodb://" + dbUser + ":" + dbPassword + "@" + dbServer + ":" + dbPort + "/" + dbName
+    // session, err := mgo.Dial(url)
 
     // Check if connection error, is mongo running?
     if err != nil {
