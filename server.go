@@ -48,11 +48,11 @@ func main() {
 
 func getMongoSession() *mgo.Session {
     // Test
-    session, err := mgo.Dial("mongodb://localhost")
+    // session, err := mgo.Dial("mongodb://localhost")
 
     // Production
-    // url := "mongodb://" + dbUser + ":" + dbPassword + "@" + dbServer + ":" + dbPort + "/" + dbName
-    // session, err := mgo.Dial(url)
+    url := "mongodb://" + dbUser + ":" + dbPassword + "@" + dbServer + ":" + dbPort + "/" + dbName
+    session, err := mgo.Dial(url)
 
     // Check if connection error, is mongo running?
     if err != nil {
