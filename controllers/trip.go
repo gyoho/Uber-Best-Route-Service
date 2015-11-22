@@ -282,7 +282,7 @@ func goToNextDestination(tc TripController, id string) (models.Trip, error) {
         updatedTrip.Next_destination_location_id = updatedTrip.Best_route_location_ids[updatedTrip.Counter]
 
         // Update the uber_wait_time_eta
-        eta, err := utils.RequestRide(tc, updatedTrip.Next_destination_location_id)
+        eta, err := requestRide(tc, updatedTrip)
         if err != nil {
             log.Println(err)
             return models.Trip{}, err
@@ -321,4 +321,35 @@ func goToNextDestination(tc TripController, id string) (models.Trip, error) {
     } else {
         return models.Trip{}, errors.New("Bug in code")
     }
+}
+
+func requestRide(tc TripController, trip models.Trip) (float64, error)  {
+    reqBody := models.RideRequest{}
+    var startCoord models.Coord
+    var err error
+
+    if trip.Counter == 0 {
+        startCoord, err = retriveCoordById(tc, trip.Starting_from_location_id)
+        if err != nil {
+            return 0.0, err
+        }
+    } else {
+        startCoord, err = retriveCoordById(tc, trip.Best_route_location_ids[trip.Counter-1])
+        if err != nil {
+            return 0.0, err
+        }
+    }
+
+    endCoord, err := retriveCoordById(tc, trip.Next_destination_location_id)
+    if err != nil {
+        return 0.0, err
+    }
+
+    reqBody.ProductID = trip.Product_ids[trip.Counter]
+    reqBody.StartLat = startCoord.Lat
+    reqBody.StartLng = startCoord.Lng
+    reqBody.EndLat = endCoord.Lat
+    reqBody.EndLng = endCoord.Lng
+
+    return utils.RequestRide(reqBody)
 }

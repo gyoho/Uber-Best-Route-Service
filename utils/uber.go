@@ -2,13 +2,13 @@ package utils
 
 import (
     "net/http"
+    "bytes"
     "io/ioutil"
     "encoding/json"
     "strings"
     "errors"
     "strconv"
     "../models"
-    "../controllers"
 )
 
 const (
@@ -54,27 +54,43 @@ func GetEstimates(startCoord models.Coord, endCoord models.Coord, estimate *Esti
     return nil
 }
 
-func RequestRide(tc TripController, trip models.Trip) (float64, error) {
+func RequestRide(reqBody models.RideRequest) (float64, error) {
     url := "https://sandbox-api.uber.com/v1/requests?access_token=" + access_token
-    body := models.RideRequest{}
-    body.ProductID = trip.Product_ids[trip.Counter]
+    // form := url.Values{}
+    // form.Add("product_id", reqBody.ProductID)
+    // form.Add("start_latitude", reqBody.StartLat)
+    // form.Add("start_longitude", reqBody.StartLng)
+    // form.Add("end_latitude", reqBody.EndLat)
+    // form.Add("end_longitude", reqBody.EndLng)
 
-    if trip.Counter == 0 {
-        startCoord, err := controllers.retriveCoordById(tc, trip.Starting_from_location_id)
-    } else {
-        startCoord, err := controllers.retriveCoordById(tc, trip.Best_route_location_ids[trip.Counter])
+    buf, _ := json.Marshal(reqBody)
+    form := bytes.NewBuffer(buf)
+
+    res, err := http.Post(url,"application/json", form)
+    if err != nil {
+		return 0.0, err
+	}
+
+    if !strings.EqualFold(res.Status, "202 Accepted") {
+        return 0.0, errors.New("Uber Server Error")
     }
 
-    endCoord, err := controllers.retriveCoordById(tc, trip.Best_route_location_ids[trip.Counter])
-
-    body.StartLat =
-    body.StartLng =
-    body.EndLat =
-    body.EndLng =
-
-    res, err := http.Post(url,"application/json",body)
-    if err != nil {
-		return nil, err
+    body, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return 0.0, err
 	}
+	defer res.Body.Close()
+
+    var contents map[string]interface{}
+	err = json.Unmarshal(body, &contents)
+    if err != nil {
+        return 0.0, err
+    }
+
+    // uberX always is the first obj in the array
+    eta := contents["eta"].(float64)
+
+    return eta, nil
+
 
 }
