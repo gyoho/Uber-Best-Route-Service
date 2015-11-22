@@ -10,11 +10,11 @@ import (
 )
 
 const (
-     dbUser string = "admin"
-     dbPassword string = "admin"
-     dbServer string = "ds043694.mongolab.com"
-     dbPort string = "43694"
-     dbName string = "cmpe273_asgmt2"
+     dbUser         string = "admin"
+     dbPassword     string = "admin"
+     dbServer       string = "ds043694.mongolab.com"
+     dbPort         string = "43694"
+     dbName         string = "cmpe273_asgmt2"
 )
 
 func main() {
@@ -37,9 +37,9 @@ func main() {
     tripController := controllers.NewTripController(mongoSession)
 
     // Trip resource
-    // router.GET("/trips/:id", tripController.GetTripDetails)
+    router.GET("/trips/:id", tripController.GetTripDetails)
     router.POST("/trips", tripController.CreateTrip)
-    // router.PUT("/trips/:id/request", tripController.UpdateTripStatus)
+    router.PUT("/trips/:id/request", tripController.UpdateTripStatus)
 
     // Fire up the server
     fmt.Println("Server listening on 8080")

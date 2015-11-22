@@ -15,6 +15,7 @@ import (
     "github.com/julienschmidt/httprouter"
     // Use defined model in another dir
     "../models"
+    "../utils"
 )
 
 // UserController represents the controller for operating on the User resource
@@ -51,7 +52,6 @@ func (uc UserController) CreateUser(rw http.ResponseWriter, req *http.Request, _
 func createUser(uc UserController, req *http.Request) (models.User, error){
     // Stub an user to be populated from the body
     usr := models.User{}
-
     // Populate the user data
     err := json.NewDecoder(req.Body).Decode(&usr)
     if err != nil {
@@ -63,7 +63,7 @@ func createUser(uc UserController, req *http.Request) (models.User, error){
     usr.Id = bson.NewObjectId()
 
     // Append coordinate to the user object
-    err = getCoordinates(&usr)
+    err = utils.GetCoordinates(&usr)
     if err != nil {
 		log.Println(err)
         return models.User{}, err
@@ -113,7 +113,7 @@ func (uc UserController) UpdateUser(rw http.ResponseWriter, req *http.Request, p
         usrJson, _ := json.Marshal(updatedUsr)
         // Write content-type, statuscode, payload
         rw.Header().Set("Content-Type", "application/json")
-        rw.WriteHeader(201)
+        rw.WriteHeader(200)
         fmt.Fprintf(rw, "%s\n", usrJson)
     }
 }
@@ -178,7 +178,7 @@ func updateUserLocation(uc UserController, id string, contents io.Reader) (model
     updatedUsr.Name = usr.Name
     json.NewDecoder(contents).Decode(&updatedUsr)
     // Append coordinate to the user object
-    err = getCoordinates(&updatedUsr)
+    err = utils.GetCoordinates(&updatedUsr)
     if err != nil {
         return models.User{}, err
     }
